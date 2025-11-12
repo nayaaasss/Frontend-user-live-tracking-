@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   final String baseUrl = "http://10.0.2.2:8080"; 
 
-  // Register
   Future<bool> register(String email, String password, String role) async {
     final url = Uri.parse("$baseUrl/register");
     final response = await http.post(

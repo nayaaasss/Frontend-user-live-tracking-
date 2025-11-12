@@ -19,7 +19,7 @@ class GlassButton extends StatelessWidget {
         width: MediaQuery.sizeOf(context).width,
         height: 55,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15), // transparan putih
+          color: Colors.white.withOpacity(0.15), 
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: Colors.white.withOpacity(0.3),
@@ -30,7 +30,7 @@ class GlassButton extends StatelessWidget {
               color: Colors.black.withOpacity(0.25),
               blurRadius: 20,
               spreadRadius: 2,
-              offset: const Offset(0, 10), // shadow ke bawah
+              offset: const Offset(0, 10), 
             ),
           ],
         ),
@@ -44,7 +44,7 @@ class GlassButton extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white, // teks tetap jelas
+                  color: Colors.white, 
                 ),
               ),
             ),

@@ -1,4 +1,3 @@
-// file: widgets/documentation.dart
 import 'package:auth_user/ui/home/components/documentation_model.dart';
 import 'package:flutter/material.dart';
 

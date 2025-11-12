@@ -23,7 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (!_formKey.currentState!.validate()) {
-      return; // kalau form belum valid, jangan lanjut
+      return;
     }
 
     setState(() => _loading = true);

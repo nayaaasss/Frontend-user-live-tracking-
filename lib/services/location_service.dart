@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LocationService {
   // Ambil posisi GPS (lat, lng)
@@ -45,4 +49,32 @@ class LocationService {
       return "Alamat tidak ditemukan";
     }
   }
+
+  static Future<void> sendDriverLocation(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final url = Uri.parse("http://10.0.2.2:8080/api/driver-location");
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(data),
+      );
+
+      if (res.statusCode == 200) {
+        print("Location sent successfully");
+      } else {
+        print("Failed to send location: ${res.statusCode}");
+        print("Response: ${res.body}");
+      }
+    } catch (e) {
+      print("Error sending location: $e");
+    }
+  }
 }
+  
+

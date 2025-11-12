@@ -19,6 +19,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+
 class _HomeScreenState extends State<HomeScreen> {
   String? _addressShort;
   String? _city;
@@ -44,39 +45,58 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _getLocation() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId') ?? '0';
-      final email = prefs.getString('email') ?? 'Unknown';
-      final role = prefs.getString('role') ?? 'Unknown';
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId') ?? '0';
+    final email = prefs.getString('email') ?? 'Unknown';
+    final role = prefs.getString('role') ?? 'Unknown';
+    final token = prefs.getString('token');
 
-      final pos = await LocationService.getCurrentPosition();
-      final alamat = await LocationService.getAddress();
+    final pos = await LocationService.getCurrentPosition();
+    final alamat = await LocationService.getAddress();
 
-      final parts = alamat.split(',');
-      String shortAddr = parts.isNotEmpty ? parts[0].trim() : "Alamat tidak tersedia";
-      String city = parts.length > 1 ? parts[1].trim() : "";
+    final parts = alamat.split(',');
+    String shortAddr = parts.isNotEmpty ? parts[0].trim() : "Alamat tidak tersedia";
+    String city = parts.length > 1 ? parts[1].trim() : "";
 
-      final data = {
-        "userId": int.tryParse(userId),
-        "email": email,
-        "role": role,
-        "lat": pos.latitude,
-        "lng": pos.longitude,
-        "slot": booking != null ? booking!.shiftInPlan : "none", 
-        "port_id": booking != null ? booking!.portId : 0,     
-      };
 
-      socketService.sendLocation(data);
+    final data = {
+      "booking_id": booking?.id,
+      "user_id": userId,
+      "name": email.split('@')[0],
+      "lat": pos.latitude, 
+      "lng": pos.longitude,
+      "container_no": booking?.containerNo ?? "",
+      "iso_code": booking?.isoCode ?? "",
+      "port_name": booking?.portName ?? "",
+      "terminal_name": booking?.terminalName ?? "",
+      "gate_in_time": "",
+      "gate_out_time": "",
+      "container_status": booking?.containerStatus ?? "",
+      "shift_in_plan": booking?.shiftInPlan ?? "",
+    };
+    final res = await http.post(
+      Uri.parse("http://10.0.2.2:8080/api/location/update"),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
 
-      setState(() {
-        _addressShort = shortAddr;
-        _city = city;
-      });
-    } catch (e) {
-      print("Error: $e");
+    if (res.statusCode == 200) {
+      print("Lokasi berhasil dikirim ke API: ${res.body}");
     }
+
+    setState(() {
+      _addressShort = shortAddr;
+      _city = city;
+    });
+  } catch (e) {
+    print("Error _getLocation(): $e");
   }
+}
+
 
  Future<void> _fetchBookingData() async {
   try {
