@@ -3,7 +3,6 @@ import 'package:auth_user/bloc/login_bloc.dart';
 import 'package:auth_user/models/booking_model.dart';
 import 'package:auth_user/routes.dart';
 import 'package:auth_user/services/location_service.dart';
-import 'package:auth_user/services/socket_service.dart';
 import 'package:auth_user/ui/home/components/model/booking_card.dart';
 import 'package:auth_user/ui/home/components/documentation.dart';
 import 'package:auth_user/ui/home/components/documentation_model.dart';
@@ -19,22 +18,23 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-
 class _HomeScreenState extends State<HomeScreen> {
   String? _addressShort;
   String? _city;
   String? _nama;
   Booking? booking;
-  final socketService = SocketService();
   bool loadingBooking = true;
 
   @override
   void initState() {
     super.initState();
-    socketService.connect("ws://10.0.2.2:8080/ws");
     _loadUserData();
-    _getLocation();
-    _fetchBookingData();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _fetchBookingData();
+    await _getLocation();
   }
 
   Future<void> _loadUserData() async {
@@ -45,75 +45,90 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _getLocation() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? '0';
-    final email = prefs.getString('email') ?? 'Unknown';
-    final role = prefs.getString('role') ?? 'Unknown';
-    final token = prefs.getString('token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userIdStr = prefs.getString('userId') ?? '0';
+      int userIdInt = 0;
+      try {
+        userIdInt = int.parse(userIdStr);
+      } catch (_) {
+        userIdInt = 0;
+      }
 
-    final pos = await LocationService.getCurrentPosition();
-    final alamat = await LocationService.getAddress();
+      final email = prefs.getString('email') ?? 'Unknown';
+      final token = prefs.getString('token');
 
-    final parts = alamat.split(',');
-    String shortAddr = parts.isNotEmpty ? parts[0].trim() : "Alamat tidak tersedia";
-    String city = parts.length > 1 ? parts[1].trim() : "";
+      final pos = await LocationService.getCurrentPosition();
+      final alamat = await LocationService.getAddress();
 
+      final parts = alamat.split(',');
+      String shortAddr = parts.isNotEmpty ? parts[0].trim() : "Alamat tidak tersedia";
+      String city = parts.length > 1 ? parts[1].trim() : "";
 
-    final data = {
-      "booking_id": booking?.id,
-      "user_id": userId,
-      "name": email.split('@')[0],
-      "lat": pos.latitude, 
-      "lng": pos.longitude,
-      "container_no": booking?.containerNo ?? "",
-      "iso_code": booking?.isoCode ?? "",
-      "port_name": booking?.portName ?? "",
-      "terminal_name": booking?.terminalName ?? "",
-      "gate_in_time": "",
-      "gate_out_time": "",
-      "container_status": booking?.containerStatus ?? "",
-      "shift_in_plan": booking?.shiftInPlan ?? "",
-    };
-    final res = await http.post(
-      Uri.parse("http://10.0.2.2:8080/api/location/update"),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(data),
-    );
+      int bookingIdInt = booking?.id ?? 0;
 
-    if (res.statusCode == 200) {
-      print("Lokasi berhasil dikirim ke API: ${res.body}");
+      final data = {
+        "booking_id": bookingIdInt,
+        "user_id": userIdInt,
+        "name": email.split('@')[0],
+        "lat": -6.103046,
+        "lng": 106.889240,
+        "container_no": booking?.containerNo ?? "",
+        "iso_code": booking?.isoCode ?? "",
+        "port_name": booking?.portName ?? "",
+        "terminal_name": booking?.terminalName ?? "",
+        "container_status": booking?.containerStatus ?? "",
+        "shift_in_plan": booking?.shiftInPlan ?? "",
+      };
+
+      print("data dikirim $data");
+      print("booking_id: ${data['booking_id'].runtimeType}, user_id: ${data['user_id'].runtimeType}, lat: ${data['lat'].runtimeType}");
+
+      final res = await http.post(
+        Uri.parse("http://10.0.2.2:8080/api/location/update"),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(data),
+      );
+
+      print("response status: ${res.statusCode}");
+      print("response body: ${res.body}");
+
+      if (res.statusCode != 200) {
+        try {
+          final body = jsonDecode(res.body);
+          print("backend error: $body");
+        } catch (_) {
+          print("backend response (non-json): ${res.body}");
+        }
+      }
+
+      setState(() {
+        _addressShort = shortAddr;
+        _city = city;
+      });
+    } catch (e) {
+      print("Error _getLocation(): $e");
     }
-
-    setState(() {
-      _addressShort = shortAddr;
-      _city = city;
-    });
-  } catch (e) {
-    print("Error _getLocation(): $e");
   }
-}
 
+  Future<void> _fetchBookingData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
 
- Future<void> _fetchBookingData() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+      final res = await http.get(
+        Uri.parse("http://10.0.2.2:8080/api/bookings"),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    final res = await http.get(
-      Uri.parse("http://10.0.2.2:8080/api/bookings"),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-  
-    if (res.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(res.body);
+      if (res.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(res.body);
 
-      if (data.isNotEmpty) {
         setState(() {
-          booking = Booking.fromJson(data.first); 
+          booking = data.isNotEmpty ? Booking.fromJson(data.first) : null;
           loadingBooking = false;
         });
       } else {
@@ -121,25 +136,12 @@ class _HomeScreenState extends State<HomeScreen> {
           booking = null;
           loadingBooking = false;
         });
+        print("Failed fetch booking: ${res.statusCode}");
       }
-    } else {
-      setState(() {
-        booking = null;
-        loadingBooking = false;
-      });
-      print("Failed to load booking: ${res.statusCode}");
-      print("token terambil dari prefs: $token");
+    } catch (e) {
+      setState(() => loadingBooking = false);
+      print("Error fetching booking: $e");
     }
-  } catch (e) {
-    print("Error fetching booking: $e");
-    setState(() => loadingBooking = false);
-  }
-}
-
-  @override
-  void dispose() {
-    socketService.dispose();
-    super.dispose();
   }
 
   @override
@@ -156,9 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: Colors.blue[100],
-                backgroundImage: const AssetImage(
-                  'assets/images/profile.jpeg',
-                ),
+                backgroundImage: const AssetImage('assets/images/profile.jpeg'),
               ),
               const SizedBox(width: 12),
               Column(
@@ -166,19 +166,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     "Hallo, ${_nama ?? 'Pengguna'}",
-                    style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     "${_city ?? ''} ${_addressShort ?? ''}".trim(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -190,11 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BlocConsumer<LoginBloc, LoginState>(
             listener: (context, state) {
               if (state is LogoutSuccess) {
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  MyRoute.login.name,
-                  (_) => false,
-                );
+                Navigator.pushNamedAndRemoveUntil(context, MyRoute.login.name, (_) => false);
               }
             },
             builder: (context, state) {
@@ -203,11 +192,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: EdgeInsets.all(8.0),
                   child: SizedBox(
                     width: 20,
-                    height: 20, 
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.blueAccent,
-                    ),
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
                   ),
                 );
               }
@@ -215,9 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.only(right: 10),
                 child: IconButton(
                   onPressed: () => context.read<LoginBloc>().add(Logout()),
-                  icon:
-                      const Icon(Icons.logout, color: Colors.black, size: 20),
-                  tooltip: "Logout",
+                  icon: const Icon(Icons.logout, color: Colors.black, size: 20),
                 ),
               );
             },
@@ -232,78 +216,63 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: const BoxDecoration(color: Colors.white),
-                    ),
+                    const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Documentation(
-                                  data: DocumentationModel(
-                                      title: "Task Today",
-                                      count: 8,
-                                      unit: "Tasks",
-                                      icon: Icons.task,
-                                      iconColor: Colors.blue,
-                                      backgroundColor: const Color.fromARGB(
-                                          255, 197, 229, 255))),
-                              const SizedBox(width: 30),
+                                data: DocumentationModel(
+                                  title: "Task Today",
+                                  count: 8,
+                                  unit: "Tasks",
+                                  icon: Icons.task,
+                                  iconColor: Colors.blue,
+                                  backgroundColor: Color.fromARGB(255, 197, 229, 255),
+                                ),
+                              ),
                               Documentation(
-                                  data: DocumentationModel(
-                                      title: "In progress",
-                                      count: 8,
-                                      unit: "Tasks",
-                                      icon: Icons.work,
-                                      iconColor: Colors.pink,
-                                      backgroundColor: const Color.fromARGB(
-                                          255, 255, 201, 219))),
+                                data: DocumentationModel(
+                                  title: "In progress",
+                                  count: 8,
+                                  unit: "Tasks",
+                                  icon: Icons.work,
+                                  iconColor: Colors.pink,
+                                  backgroundColor: Color.fromARGB(255, 255, 201, 219),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 20),
-                          const Text(
-                            "Your Task",
-                            style: TextStyle(
-                              color: Colors.black ,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              
-                            ),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text("Your Task", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 10),
-
-                    if (booking != null)
-                      BookingCard(
-                        containerType: booking!.containerType,
-                        portName: booking!.portName,
-                        terminalName: booking!.terminalName,
-                        isoCode: booking!.isoCode,
-                        gateInPlan: booking!.gateInPlan,
-                        shiftInPlan: booking!.shiftInPlan,
-                        containerNo: booking!.containerNo,
-                        containerStatus: booking!.containerStatus, 
-                        stid: '',
-                      )
-                    else
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 50),
-                          child: Text(
-                            "Belum ada booking.",
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey),
+                    booking != null
+                        ? BookingCard(
+                            containerType: booking!.containerType,
+                            portName: booking!.portName,
+                            terminalName: booking!.terminalName,
+                            isoCode: booking!.isoCode,
+                            gateInPlan: booking!.gateInPlan,
+                            shiftInPlan: booking!.shiftInPlan,
+                            containerNo: booking!.containerNo,
+                            containerStatus: booking!.containerStatus,
+                            stid: '',
+                          )
+                        : const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 50),
+                              child: Text("Belum ada booking.", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                            ),
                           ),
-                        ),
-                      ),
                   ],
                 ),
               ),
