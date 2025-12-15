@@ -12,9 +12,10 @@ class Booking {
   final String containerStatus;
   final String isoCode;
   final String stid;
+  final DateTime? startTime;
+  final DateTime? endTime;
 
   Booking({
-    required this.stid,
     required this.id,
     required this.userId,
     required this.portId,
@@ -27,6 +28,9 @@ class Booking {
     required this.containerSize,
     required this.containerStatus,
     required this.isoCode,
+    required this.stid,
+    this.startTime,
+    this.endTime,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -44,22 +48,42 @@ class Booking {
       containerStatus: json['container_status'] ?? '',
       isoCode: json['iso_code'] ?? '',
       stid: json['stid'] ?? '',
+
+      startTime: json['start_time'] != null && json['start_time'] != ""
+          ? DateTime.parse(json['start_time'])
+          : null,
+
+      endTime: json['end_time'] != null && json['end_time'] != ""
+          ? DateTime.parse(json['end_time'])
+          : null,
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'user_id': userId,
-        'port_id': portId,
-        'port_name': portName,
-        'terminal_name': terminalName,
-        'gate_in_plan': gateInPlan,
-        'shift_in_plan': shiftInPlan,
-        'container_no': containerNo,
-        'container_type': containerType,
-        'container_size': containerSize,
-        'container_status': containerStatus,
-        'iso_code': isoCode,
-        'stid': stid,
-      };
+  Map<String, dynamic> toJson() {
+    final data = {
+      'id': id,
+      'user_id': userId,
+      'port_id': portId,
+      'port_name': portName,
+      'terminal_name': terminalName,
+      'gate_in_plan': gateInPlan,
+      'shift_in_plan': shiftInPlan,
+      'container_no': containerNo,
+      'container_type': containerType,
+      'container_size': containerSize,
+      'container_status': containerStatus,
+      'iso_code': isoCode,
+      'stid': stid,
+    };
+
+    if (startTime != null) {
+      data['start_time'] = startTime!.toUtc().toIso8601String();
+    }
+
+    if (endTime != null) {
+      data['end_time'] = endTime!.toUtc().toIso8601String();
+    }
+
+    return data;
+  }
 }

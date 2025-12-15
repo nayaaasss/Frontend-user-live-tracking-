@@ -62,7 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final alamat = await LocationService.getAddress();
 
       final parts = alamat.split(',');
-      String shortAddr = parts.isNotEmpty ? parts[0].trim() : "Alamat tidak tersedia";
+      String shortAddr =
+          parts.isNotEmpty ? parts[0].trim() : "Alamat tidak tersedia";
       String city = parts.length > 1 ? parts[1].trim() : "";
 
       int bookingIdInt = booking?.id ?? 0;
@@ -71,8 +72,8 @@ class _HomeScreenState extends State<HomeScreen> {
         "booking_id": bookingIdInt,
         "user_id": userIdInt,
         "name": email.split('@')[0],
-        "lat": -6.103046,
-        "lng": 106.889240,
+        "lat": -6.109831, 
+        "lng": 106.882331,
         "container_no": booking?.containerNo ?? "",
         "iso_code": booking?.isoCode ?? "",
         "port_name": booking?.portName ?? "",
@@ -81,8 +82,18 @@ class _HomeScreenState extends State<HomeScreen> {
         "shift_in_plan": booking?.shiftInPlan ?? "",
       };
 
+      if (booking?.startTime != null) {
+        data["start_time"] = booking!.startTime!.toUtc().toIso8601String();
+      }
+
+      if (booking?.endTime != null) {
+        data["end_time"] = booking!.endTime!.toUtc().toIso8601String();
+      }
+
       print("data dikirim $data");
-      print("booking_id: ${data['booking_id'].runtimeType}, user_id: ${data['user_id'].runtimeType}, lat: ${data['lat'].runtimeType}");
+      print(
+        "booking_id: ${data['booking_id'].runtimeType}, user_id: ${data['user_id'].runtimeType}, lat: ${data['lat'].runtimeType}",
+      );
 
       final res = await http.post(
         Uri.parse("http://10.0.2.2:8080/api/location/update"),
@@ -166,12 +177,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     "Hallo, ${_nama ?? 'Pengguna'}",
-                    style: const TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     "${_city ?? ''} ${_addressShort ?? ''}".trim(),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -183,7 +202,11 @@ class _HomeScreenState extends State<HomeScreen> {
           BlocConsumer<LoginBloc, LoginState>(
             listener: (context, state) {
               if (state is LogoutSuccess) {
-                Navigator.pushNamedAndRemoveUntil(context, MyRoute.login.name, (_) => false);
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  MyRoute.login.name,
+                  (_) => false,
+                );
               }
             },
             builder: (context, state) {
@@ -193,7 +216,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.blueAccent,
+                    ),
                   ),
                 );
               }
@@ -210,53 +236,70 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: loadingBooking
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Documentation(
-                                data: DocumentationModel(
-                                  title: "Task Today",
-                                  count: 8,
-                                  unit: "Tasks",
-                                  icon: Icons.task,
-                                  iconColor: Colors.blue,
-                                  backgroundColor: Color.fromARGB(255, 197, 229, 255),
+        child:
+            loadingBooking
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Documentation(
+                                  data: DocumentationModel(
+                                    title: "Task Today",
+                                    count: 8,
+                                    unit: "Tasks",
+                                    icon: Icons.task,
+                                    iconColor: Colors.blue,
+                                    backgroundColor: Color.fromARGB(
+                                      255,
+                                      197,
+                                      229,
+                                      255,
+                                    ),
+                                  ),
+                                ),
+                                Documentation(
+                                  data: DocumentationModel(
+                                    title: "In progress",
+                                    count: 8,
+                                    unit: "Tasks",
+                                    icon: Icons.work,
+                                    iconColor: Colors.pink,
+                                    backgroundColor: Color.fromARGB(
+                                      255,
+                                      255,
+                                      201,
+                                      219,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                "Your Task",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Documentation(
-                                data: DocumentationModel(
-                                  title: "In progress",
-                                  count: 8,
-                                  unit: "Tasks",
-                                  icon: Icons.work,
-                                  iconColor: Colors.pink,
-                                  backgroundColor: Color.fromARGB(255, 255, 201, 219),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text("Your Task", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    booking != null
-                        ? BookingCard(
+                      const SizedBox(height: 10),
+                      booking != null
+                          ? BookingCard(
                             containerType: booking!.containerType,
                             portName: booking!.portName,
                             terminalName: booking!.terminalName,
@@ -267,15 +310,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             containerStatus: booking!.containerStatus,
                             stid: '',
                           )
-                        : const Center(
+                          : const Center(
                             child: Padding(
                               padding: EdgeInsets.only(top: 50),
-                              child: Text("Belum ada booking.", style: TextStyle(fontSize: 14, color: Colors.grey)),
+                              child: Text(
+                                "Belum ada booking.",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
                           ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
       ),
     );
   }
