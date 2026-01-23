@@ -16,5 +16,4 @@ class LoginRepository {
       return Left('login failed');
     }
   }
-
 }
